@@ -15,12 +15,12 @@ st.set_page_config(
 # -----------------------------------------------------
 # Load Model
 # -----------------------------------------------------
-MODEL_PATH = "roberta_final"
 
+MODEL_NAME = "24f2007795/mcq-solver"
 @st.cache_resource
 def load_model():
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-    model = AutoModelForSequenceClassification.from_pretrained(MODEL_PATH)
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
     model.eval()
     return tokenizer, model
 
