@@ -6,6 +6,7 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 # -----------------------------------------------------
 # Page Configuration
 # -----------------------------------------------------
+
 st.set_page_config(
     page_title="Smart MCQ Solver",
     page_icon="🧠",
@@ -13,25 +14,41 @@ st.set_page_config(
 )
 
 # -----------------------------------------------------
-# Load Model
+# Model Configuration
 # -----------------------------------------------------
 
 MODEL_NAME = "24f2007795/mcq-solver"
+
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+LABELS = ["A", "B", "C", "D", "E"]
+
+# -----------------------------------------------------
+# Load Model
+# -----------------------------------------------------
+
 @st.cache_resource
 def load_model():
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
     model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
+
+    model.to(DEVICE)
     model.eval()
+
     return tokenizer, model
 
-tokenizer, model = load_model()
 
-# Your label order
-LABELS = ["A", "B", "C", "D", "E"]
+try:
+    tokenizer, model = load_model()
+except Exception as e:
+    st.error("❌ Unable to load the model from Hugging Face.")
+    st.exception(e)
+    st.stop()
 
 # -----------------------------------------------------
 # Prediction Function
 # -----------------------------------------------------
+
 def predict(prompt, a, b, c, d, e):
 
     text = (
@@ -50,6 +67,8 @@ def predict(prompt, a, b, c, d, e):
         max_length=384,
         return_tensors="pt"
     )
+
+    inputs = {k: v.to(DEVICE) for k, v in inputs.items()}
 
     with torch.no_grad():
         outputs = model(**inputs)
@@ -70,15 +89,21 @@ def predict(prompt, a, b, c, d, e):
 
     return predictions
 
+# -----------------------------------------------------
+# User Interface
+# -----------------------------------------------------
 
-# -----------------------------------------------------
-# Streamlit UI
-# -----------------------------------------------------
 st.title("🧠 Smart MCQ Solver")
 
-st.write(
-    "Fine-tuned **RoBERTa** model for Multiple Choice Question Answering."
+st.markdown(
+    """
+This application uses a **fine-tuned RoBERTa model**
+to predict the most likely correct answer for a
+multiple-choice question.
+"""
 )
+
+st.divider()
 
 prompt = st.text_area("Question")
 
@@ -88,13 +113,14 @@ c = st.text_input("Option C")
 d = st.text_input("Option D")
 e = st.text_input("Option E")
 
-if st.button("Predict"):
+if st.button("Predict", use_container_width=True):
 
     if not all([prompt, a, b, c, d, e]):
-        st.warning("Please fill all fields.")
+        st.warning("Please fill in all fields.")
     else:
 
-        predictions = predict(prompt, a, b, c, d, e)
+        with st.spinner("Running inference..."):
+            predictions = predict(prompt, a, b, c, d, e)
 
         st.success("Prediction Complete!")
 
@@ -103,4 +129,17 @@ if st.button("Predict"):
         medals = ["🥇", "🥈", "🥉"]
 
         for medal, (label, score) in zip(medals, predictions):
-            st.write(f"{medal} **{label}** — {score:.2f}% confidence")
+
+            st.write(f"{medal} **Option {label}**")
+
+            st.progress(score / 100)
+
+            st.write(f"Confidence: **{score:.2f}%**")
+
+            st.write("")
+
+st.divider()
+
+st.caption(
+    "Developed using a fine-tuned RoBERTa model trained for Multiple Choice Question Answering."
+)
