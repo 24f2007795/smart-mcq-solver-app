@@ -1,0 +1,7 @@
+streamlit
+torch
+transformers
+tokenizers
+sentencepiece
+safetensors
+numpy
